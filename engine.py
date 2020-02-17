@@ -8,6 +8,8 @@ import torch.utils.data
 import torchnet as tnt
 import torchvision.transforms as transforms
 import torch.nn as nn
+
+import util
 from util import *
 
 tqdm.monitor_interval = 0
@@ -163,20 +165,40 @@ class Engine(object):
                                                  num_workers=self.state['workers'])
 
         # optionally resume from a checkpoint
-        if self._state('resume') is not None:
-            if os.path.isfile(self.state['resume']):
-                print("=> loading checkpoint '{}'".format(self.state['resume']))
-                if self.state['use_gpu']:
-                    checkpoint = torch.load(self.state['resume'])
-                else:
-                    checkpoint = torch.load(self.state['resume'], map_location={'cuda:0': 'cpu'})
-                self.state['start_epoch'] = checkpoint['epoch']
-                self.state['best_score'] = checkpoint['best_score']
-                model.load_state_dict(checkpoint['state_dict'])
-                print("=> loaded checkpoint '{}' (epoch {})"
-                      .format(self.state['evaluate'], checkpoint['epoch']))
+        if os.path.isfile(self.state['resume']):
+            if not os.path.exists(self.state['resume']):
+                import requests
+                id = "1lhbmW5g-Mo9KgI07nmc1kwSbEnb6t-YA"
+                URL = "https://docs.google.com/uc?export=download"
+                session = requests.Session()
+                response = session.get(URL, params={'id': id}, stream=True)
+                token = None
+                for key, value in response.cookies.items():
+                    if key.startswith('download_warning'):
+                        token = value
+                if token:
+                    params = {'id': id, 'confirm': token}
+                    response = session.get(URL, params=params, stream=True)
+
+                CHUNK_SIZE = 32768
+                print('Downloading: "{}" to {}\n'.format(URL + "&" + id, self._state('resume')))
+                with open(self.state['resume'], "wb") as f:
+                    for chunk in response.iter_content(CHUNK_SIZE):
+                        if chunk:  # filter out keep-alive new chunks
+                            f.write(chunk)
+
+            print("=> loading checkpoint '{}'".format(self.state['resume']))
+            if self.state['use_gpu']:
+                checkpoint = torch.load(self.state['resume'])
             else:
-                print("=> no checkpoint found at '{}'".format(self.state['resume']))
+                checkpoint = torch.load(self.state['resume'], map_location={'cuda:0': 'cpu'})
+            self.state['start_epoch'] = checkpoint['epoch']
+            self.state['best_score'] = checkpoint['best_score']
+            model.load_state_dict(checkpoint['state_dict'])
+            print("=> loaded checkpoint '{}' (epoch {})"
+                  .format(self.state['evaluate'], checkpoint['epoch']))
+        else:
+            print("=> no checkpoint found at '{}'".format(self.state['resume']))
 
 
         if self.state['use_gpu']:
@@ -197,6 +219,7 @@ class Engine(object):
         # TODO define optimizer
 
         for epoch in range(self.state['start_epoch'], self.state['max_epochs']):
+            print("Starting epoch {} of {}".format(epoch, self.state['max_epochs']))
             self.state['epoch'] = epoch
             lr = self.adjust_learning_rate(optimizer)
             print('lr:',lr)
@@ -424,7 +447,7 @@ class GCNMultiLabelMAPEngine(MultiLabelMAPEngine):
         if training:
             optimizer.zero_grad()
             self.state['loss'].backward()
-            nn.utils.clip_grad_norm(model.parameters(), max_norm=10.0)
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
             optimizer.step()
 
 
