@@ -1,0 +1,5 @@
+.idea/
+checkpoint/voc/voc_checkpoint.pth.tar
+data/voc/VOCdevkit/VOC2007/
+data/voc/tmp/
+__pycache__
