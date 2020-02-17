@@ -4,7 +4,7 @@ from models import *
 from voc import *
 
 parser = argparse.ArgumentParser(description='WILDCAT Training')
-parser.add_argument('data', metavar='DIR',
+parser.add_argument('--data', default='data/voc', metavar='DIR',
                     help='path to dataset (e.g. data/')
 parser.add_argument('--image-size', '-i', default=224, type=int,
                     metavar='N', help='image size (default: 224)')
@@ -36,7 +36,9 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 
 def main_voc2007():
     global args, best_prec1, use_gpu
+
     args = parser.parse_args()
+    print(args)
 
     use_gpu = torch.cuda.is_available()
 
